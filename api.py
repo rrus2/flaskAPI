@@ -114,6 +114,50 @@ def userdelete(id):
     if item is not None:
         mongo.db.users.delete_one(item)
 
+# ORDERS API
+@app.route('/orders', methods=['GET'])
+def orders():
+    collection = mongo.db.orders.find()
+
+    orders = []
+
+    for i in collection:
+        orders.append({'_id': bson.ObjectId(oid=i['_id']), 'ProductID': i['ProductID'], 'UserID': i['UserID']})
+
+    return jsonify(orders)
+
+@app.route('/orders/<id>', methods=['GET'])
+def order(id):
+    item = mongo.db.orders.find_one({'_id': bson.ObjectId(oid=id)})
+    order = {'_id': item['_id'], 'ProductID': item['ProductID'], 'UserID': item['UserID']}
+    return jsonify(order)
+
+@app.route('/orders', methods=['POST'])
+def orderpost():
+    r = request.get_json('_id')
+    productid = r['ProductID']
+    userid = r['UserID']
+
+    result = mongo.db.orders.insert_one({'ProductID': productid, 'UserID': userid})
+    if result.acknowledged and productid != None and userid != None:
+        item = mongo.db.orders.find_one({'_id': bson.ObjectId(oid=r['_id'])})
+        return jsonify(item)
+
+@app.route('/users/<id>', methods=['PUT'])
+def ordersput(id):
+    item = mongo.db.orders.find_one({'_id': bson.ObjectId(oid=id)})
+    r = request.get_json('_id')
+    productid = r['ProductID']
+    userid = r['UserID']
+    updated_item = {'$set': {'ProductID': productid, 'UserID': userid}}
+    mongo.db.orders.update_one(item, updated_item)
+
+    return jsonify(updated_item)
+
+@app.route('/users/<id>', methods=['DELETE'])
+def ordersdelete(id):
+    item = mongo.db.orders.find_one({'_id': bson.ObjectId(oid=id)})
+    mongo.db.orders.delete_one(item)
 
 if __name__ == '__main__':
     app.run(debug=True)
