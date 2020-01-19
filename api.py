@@ -125,6 +125,29 @@ def userdelete(id):
     if item is not None:
         mongo.db.users.delete_one(item)
 
+@app.route('/login', methods=['POST'])
+def login():
+    r = request.get_json('username')
+    username = r['username']
+    password = r['password']
+
+    user = mongo.db.users.find_one({'username': username})
+    if user is not None:
+        if bcrypt.checkpw(password.encode('utf-8'), user['password']):
+            userobj = {
+                '_id': str(user['_id']),
+                'firstname': user['firstname'],
+                'lastname': user['lastname'],
+                'username': user['username'],
+                'birthdate': user['birthdate'],
+                'email': user['email'],
+                'role': user['role'],
+            }
+            return jsonify(userobj)
+
+    return "User/Password did not match", 301
+
+
 # ORDERS API
 @app.route('/orders', methods=['GET'])
 def orders():
