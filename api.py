@@ -1,11 +1,13 @@
 from flask import Flask, jsonify, request
 from flask_pymongo import PyMongo
 import bson, bcrypt
+from flask_cors import cross_origin, CORS
 
 app = Flask(__name__)
 app.config['MONGO_DBNAME'] = 'shop'
 app.config['MONGO_URI'] = 'mongodb://localhost:27017/shop'
 mongo = PyMongo(app)
+CORS(app)
 
 # PRODUCT API
 @app.route('/products', methods=['GET'])
@@ -84,13 +86,22 @@ def userpost():
     username = r['username']
     birthdate = r['birthdate']
     email = r['email']
-    password = bcrypt.hashpw(r['password'].encode('utf-8'), bcrypt.gensalt())
-
-    result = mongo.db.users.insert_one({'firstname': firstname, 'lastname': lastname, 'username': username, 'birthdate': birthdate, 'email': email, 'password': password})
-    if result.acknowledged:
-        output = mongo.db.users.find_one({'username': username})
-        json = {'_id': str(output['_id']), 'firstname': firstname, 'lastname': lastname, 'username': username, 'birthdate': birthdate, 'email': email, 'password': password}
-        return jsonify(json)
+    role = 'user'
+    password1 = r['password']
+    password2 = r['repeatpassword']
+    check_username = mongo.db.users.find({'username': username})
+    print(check_username)
+    if password1 == password2 and firstname != "" and lastname != "" and username != "" and check_username.count() < 1:
+        password = bcrypt.hashpw(r['password'].encode('utf-8'), bcrypt.gensalt())
+        result = mongo.db.users.insert_one({'firstname': firstname, 'lastname': lastname, 'username': username, 'birthdate': birthdate, 'email': email, 'role': role, 'password': password})
+        if result.acknowledged:
+            #output = mongo.db.users.find_one({'username': username})
+            #json = {'_id': output['_id'], 'firstname': firstname, 'lastname': lastname, 'username': username, 'birthdate': birthdate, 'email': email, 'role': role, 'password': password}
+            return "user successfully added", 200
+        else:
+            return "fail inserting user", 404
+    else:
+        return "user already exists", 404
 
 @app.route('/users/<id>', methods=['PUT'])
 def userput(id):
