@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_pymongo import PyMongo
 import bson, bcrypt
 from flask_cors import cross_origin, CORS
+import json
 
 app = Flask(__name__)
 app.config['MONGO_DBNAME'] = 'shop'
@@ -12,8 +13,34 @@ CORS(app)
 # PRODUCT API
 @app.route('/products', methods=['GET'])
 def products():
-    collection = mongo.db.product.find()
+    collection = list(mongo.db.product.find())
+    r = request.get_json('_id')
+    name = None
+    min_price = None
+    max_price = None
+    category = None
+    if r:
+        if 'name' in r:
+            name = r['name']
+        if 'min_price' in r:
+            min_price = r['min_price']
+        if 'max_price' in r:
+            max_price = r['max_price']
+        if 'category' in r:
+            category = r['category']
 
+    if name:
+        collection = [x for x in collection if name in x.get('name')]
+
+    if min_price:
+        collection = [x for x in collection if min_price <= int(x.get('price'))]
+
+    if max_price:
+        collection = [x for x in collection if max_price >= int(x.get('price'))]
+    
+    if category:
+        collection = [x for x in collection if category in x.get('category')]
+    
     products = []
 
     for product in collection:
@@ -32,12 +59,13 @@ def productpost():
     r = request.get_json('name')
     name = r['name']
     price = r['price']
+    category = r['category']
     image = r['image']
 
-    result = mongo.db.product.insert_one({'name': name, 'image': image, 'price': price})
+    result = mongo.db.product.insert_one({'name': name, 'image': image, 'price': price, 'category': category})
     if result.acknowledged:
         output = mongo.db.product.find_one({'name': name})
-        json = {'id' : str(output['_id']), 'name': output['name'], 'price': output['price'], 'image': output['image']}
+        json = {'id' : str(output['_id']), 'name': output['name'], 'price': output['price'], 'image': output['image'], 'category': output['category']}
 
         return jsonify(json)
 
