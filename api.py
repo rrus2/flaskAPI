@@ -14,7 +14,11 @@ CORS(app)
 @app.route('/products', methods=['GET'])
 def products():
     collection = list(mongo.db.product.find())
-    r = request.get_json('_id')
+    r = request
+    if request.data:
+        r = r.get_json(force=True)
+    else:
+        r = r.get_json()
     name = None
     min_price = None
     max_price = None
@@ -51,23 +55,33 @@ def products():
 @app.route('/products/<id>', methods = ['GET'])
 def product(id):
     item = mongo.db.product.find_one({'_id': bson.ObjectId(oid=str(id))})
-    product = {'id': str(item['_id']),'name': item['name'], 'price': item['price'], 'image': item['image']}
-    return jsonify(product)
+    if item is not None:
+        product = {'id': str(item['_id']),'name': item['name'], 'price': item['price'], 'image': item['image']}
+        return jsonify(product)
+    else:
+        return "Product not found", 400
     
 @app.route('/products', methods = ['POST'])
 def productpost():
-    r = request.get_json('name')
+    r = request
+    if request.data:
+        r = request.get_json(force=True)
+    else:
+        return "No data", 400
+
     name = r['name']
     price = r['price']
     category = r['category']
     image = r['image']
+    if price != "" and name != "" and image != "" and category != "": 
+        result = mongo.db.product.insert_one({'name': name, 'image': image, 'price': price, 'category': category})
+        if result.acknowledged:
+            output = mongo.db.product.find_one({'name': name})
+            json = {'id' : str(output['_id']), 'name': output['name'], 'price': output['price'], 'image': output['image'], 'category': output['category']}
 
-    result = mongo.db.product.insert_one({'name': name, 'image': image, 'price': price, 'category': category})
-    if result.acknowledged:
-        output = mongo.db.product.find_one({'name': name})
-        json = {'id' : str(output['_id']), 'name': output['name'], 'price': output['price'], 'image': output['image'], 'category': output['category']}
-
-        return jsonify(json)
+            return jsonify(json)
+    else:
+        return "Fail data", 400
 
 @app.route('/products/<id>', methods=['PUT'])
 def productput(id):
@@ -76,10 +90,14 @@ def productput(id):
     name = r['name']
     price = r['price']
     image = r['image']
-    updated_item = {'$set': {'name': name, 'price': price, 'image': image}}
-    mongo.db.product.update_one(item, updated_item)
+    category = r['category']
+    if price != "" and name != "" and image != "" and category != "": 
+        updated_item = {'$set': {'name': name, 'price': price, 'image': image, 'category': category}}
+        mongo.db.product.update_one(item, updated_item)
     
-    return jsonify(updated_item)
+        return jsonify(updated_item)
+    else:
+        return "Fail data", 400
 
 @app.route('/products/<string:name>', methods=['DELETE'])
 def productdelete(name):
